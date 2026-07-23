@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ahsant | Awards Evaluation Platform</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#065f68">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ahsant">
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <style>
@@ -466,7 +474,8 @@ tr.editing-row td input, tr.editing-row td select{
 
     confirmDelNominee:{en:"Delete this nominee?", ar:"هل تريد حذف هذا المرشح؟"},
     confirmDelEvaluator:{en:"This will delete the evaluator and all of their scores. Are you sure?", ar:"سيتم حذف هذا المقيّم وجميع درجاته. هل أنت متأكد؟"},
-    confirmReset:{en:"This will delete all nominees and every evaluation score. Are you sure?", ar:"سيتم حذف جميع المرشحين وكل درجات التقييم. هل أنت متأكد؟"}
+    confirmReset:{en:"This will delete all nominees and every evaluation score. Are you sure?", ar:"سيتم حذف جميع المرشحين وكل درجات التقييم. هل أنت متأكد؟"},
+    installApp:{en:"Install App", ar:"تثبيت التطبيق"}
   };
   function tr(key){
     var row = I18N[key];
@@ -528,7 +537,8 @@ tr.editing-row td input, tr.editing-row td select{
     editingNomineeId: null,
     editingEvaluatorId: null,
     adminAuthed: false,
-    adminError: ""
+    adminError: "",
+    canInstall: false
   };
   try{ state.adminAuthed = sessionStorage.getItem("ahsant_admin_authed") === "1"; }catch(e){}
   try{
@@ -731,6 +741,7 @@ tr.editing-row td input, tr.editing-row td select{
     +       '<nav class="nav-tabs">'
     +         navTab("admin",tr("navAdmin")) + navTab("evaluate",tr("navEvaluate")) + navTab("results",tr("navResults"))
     +       '</nav>'
+    +       (state.canInstall ? '<button class="lang-toggle" id="installAppBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>'+tr("installApp")+'</button>' : '')
     +       '<button class="lang-toggle" id="langToggleBtn" title="Switch language / تبديل اللغة">'
     +         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg>'
     +         (state.lang === "ar" ? "EN" : "AR")
@@ -970,9 +981,8 @@ tr.editing-row td input, tr.editing-row td select{
         btns.push('<button class="'+sel.trim()+'" data-score-btn data-nominee="'+n.id+'" data-eval="'+evId+'" data-criterion="'+c.key+'" data-value="'+i+'">'+i+'</button>');
       }
       var primary = state.lang === "ar" ? c.ar : c.en;
-      var secondary = state.lang === "ar" ? c.en : c.ar;
       return '<div class="criterion-row">'
-        + '<div class="criterion-label"><div class="name">'+primary+' <span style="color:var(--text-faint); font-weight:400;">('+secondary+')</span></div><div class="weight">'+tr("weight")+' '+Math.round(c.weight*100)+'%</div></div>'
+        + '<div class="criterion-label"><div class="name">'+primary+'</div><div class="weight">'+tr("weight")+' '+Math.round(c.weight*100)+'%</div></div>'
         + '<div class="scale">'+btns.join("")+'</div>'
         + '</div>';
     }).join("");
@@ -1061,6 +1071,18 @@ tr.editing-row td input, tr.editing-row td select{
         state.lang = state.lang === "ar" ? "en" : "ar";
         try{ localStorage.setItem("ahsant_lang", state.lang); }catch(e){}
         render();
+      });
+    }
+    var installBtn = document.getElementById("installAppBtn");
+    if(installBtn){
+      installBtn.addEventListener("click", function(){
+        if(!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        deferredInstallPrompt.userChoice.then(function(){
+          deferredInstallPrompt = null;
+          state.canInstall = false;
+          render();
+        });
       });
     }
 
@@ -1345,6 +1367,25 @@ tr.editing-row td input, tr.editing-row td select{
         else{ statusText2.textContent = tr("saveFailed"); }
       }
     }, 500);
+  }
+
+  /* ============ PWA install prompt ============ */
+  var deferredInstallPrompt = null;
+  window.addEventListener("beforeinstallprompt", function(e){
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    state.canInstall = true;
+    render();
+  });
+  window.addEventListener("appinstalled", function(){
+    deferredInstallPrompt = null;
+    state.canInstall = false;
+    render();
+  });
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("service-worker.js").catch(function(){});
+    });
   }
 
   /* ============ Init ============ */
