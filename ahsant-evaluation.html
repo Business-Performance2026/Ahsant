@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>أحسنت | منصة تقييم الجوائز</title>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+
+:root{
+  --bg:#0B1F1E;
+  --bg-2:#0E2624;
+  --surface:#12302E;
+  --surface-2:#1A3D3A;
+  --surface-3:#204744;
+  --border:rgba(242,239,230,0.10);
+  --border-strong:rgba(242,239,230,0.18);
+  --gold:#C9A65B;
+  --gold-bright:#E0C27E;
+  --gold-dim:rgba(201,166,91,0.16);
+  --silver:#B9C4C6;
+  --bronze:#C58652;
+  --text:#F2EFE6;
+  --text-dim:#9BB0AC;
+  --text-faint:#6C8783;
+  --danger:#B5453D;
+  --danger-soft:rgba(181,69,61,0.15);
+  --ok:#7FAE8E;
+  --font-display:'Tajawal', sans-serif;
+  --font-body:'IBM Plex Sans Arabic','Tajawal', sans-serif;
+  --radius:14px;
+  --radius-sm:8px;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(201,166,91,0.07), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(127,174,142,0.05), transparent 60%),
+    var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  min-height:100vh;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important; transition:none !important;}
+}
+
+a{color:inherit;}
+button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit;}
+input,select{font-family:inherit; color:inherit;}
+::selection{background:var(--gold-dim); color:var(--gold-bright);}
+:focus-visible{outline:2px solid var(--gold); outline-offset:2px; border-radius:4px;}
+
+.app-shell{min-height:100vh; display:flex; flex-direction:column;}
+
+/* ---------- Header ---------- */
+.topbar{
+  position:sticky; top:0; z-index:40;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 28px;
+  background:rgba(11,31,30,0.85);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+.brand{display:flex; align-items:center; gap:10px; cursor:pointer;}
+.brand-mark{
+  width:34px; height:34px; border-radius:9px;
+  background:linear-gradient(155deg, var(--gold-bright), var(--gold) 60%, #8f7238);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:900; color:#1B1200; font-size:16px;
+  box-shadow:0 4px 14px rgba(201,166,91,0.25);
+}
+.brand-name{font-family:var(--font-display); font-weight:800; font-size:19px; letter-spacing:0.2px;}
+.brand-sub{font-size:11px; color:var(--text-faint); margin-top:-2px;}
+
+.nav-tabs{display:flex; gap:4px; background:var(--surface); padding:4px; border-radius:11px; border:1px solid var(--border);}
+.nav-tab{
+  padding:8px 16px; border-radius:8px; font-size:13.5px; font-weight:600;
+  color:var(--text-dim); transition:all .18s ease;
+}
+.nav-tab:hover{color:var(--text);}
+.nav-tab.active{background:var(--gold-dim); color:var(--gold-bright);}
+
+main{flex:1; width:100%;}
+.container{max-width:1080px; margin:0 auto; padding:36px 24px 80px;}
+
+/* ---------- Home / hero ---------- */
+.hero{
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  padding:64px 20px 40px;
+}
+.hero-medal-wrap{margin-bottom:26px;}
+.eyebrow{
+  font-size:12.5px; letter-spacing:2.5px; color:var(--gold); font-weight:700;
+  text-transform:uppercase; margin-bottom:14px;
+}
+.hero h1{
+  font-family:var(--font-display); font-weight:900; font-size:56px;
+  background:linear-gradient(180deg, var(--text) 30%, var(--gold-bright));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  letter-spacing:-1px;
+}
+.hero p{color:var(--text-dim); font-size:16px; max-width:520px; margin:16px auto 0; line-height:1.8;}
+
+.role-grid{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:16px;
+  max-width:920px; margin:48px auto 0; width:100%;
+}
+@media (max-width:760px){ .role-grid{grid-template-columns:1fr;} .hero h1{font-size:38px;} }
+
+.role-card{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:26px 22px; text-align:right; transition:transform .18s ease, border-color .18s ease, background .18s ease;
+  position:relative; overflow:hidden;
+}
+.role-card:hover{transform:translateY(-3px); border-color:var(--border-strong); background:var(--surface-2);}
+.role-card .ic{
+  width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  background:var(--gold-dim); color:var(--gold-bright); font-size:19px; margin-bottom:16px;
+}
+.role-card h3{font-family:var(--font-display); font-size:17px; font-weight:700; margin-bottom:6px;}
+.role-card p{font-size:13px; color:var(--text-dim); line-height:1.7;}
+.role-card .go{
+  margin-top:16px; font-size:12.5px; font-weight:700; color:var(--gold);
+  display:flex; align-items:center; gap:6px;
+}
+
+/* ---------- Section headers ---------- */
+.section-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:12px;}
+.section-head h2{font-family:var(--font-display); font-size:24px; font-weight:800;}
+.section-head p{color:var(--text-dim); font-size:13.5px; margin-top:4px;}
+.back-link{font-size:13px; color:var(--text-dim); display:inline-flex; align-items:center; gap:6px; margin-bottom:18px;}
+.back-link:hover{color:var(--gold);}
+
+/* ---------- Buttons ---------- */
+.btn{
+  padding:10px 18px; border-radius:9px; font-size:13.5px; font-weight:700;
+  display:inline-flex; align-items:center; gap:8px; transition:all .15s ease;
+  border:1px solid transparent;
+}
+.btn-gold{background:linear-gradient(160deg, var(--gold-bright), var(--gold)); color:#1B1200;}
+.btn-gold:hover{filter:brightness(1.08); transform:translateY(-1px);}
+.btn-ghost{background:var(--surface-2); border-color:var(--border-strong); color:var(--text);}
+.btn-ghost:hover{background:var(--surface-3);}
+.btn-danger{background:var(--danger-soft); color:#E4938A; border-color:rgba(181,69,61,0.3);}
+.btn-danger:hover{background:rgba(181,69,61,0.25);}
+.btn-sm{padding:7px 12px; font-size:12.5px;}
+.btn:disabled{opacity:0.45; cursor:not-allowed; transform:none !important;}
+
+/* ---------- Cards / panels ---------- */
+.panel{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:22px;}
+.panel + .panel{margin-top:18px;}
+
+/* ---------- Admin: form ---------- */
+.form-grid{display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr auto; gap:10px; align-items:end;}
+@media (max-width:900px){ .form-grid{grid-template-columns:1fr 1fr;} }
+.field label{display:block; font-size:11.5px; color:var(--text-faint); margin-bottom:6px; font-weight:600;}
+.field input, .field select{
+  width:100%; padding:10px 12px; border-radius:8px; background:var(--bg-2);
+  border:1px solid var(--border-strong); font-size:13.5px; color:var(--text);
+}
+.field input:focus, .field select:focus{border-color:var(--gold);}
+
+/* ---------- Table ---------- */
+.table-wrap{overflow-x:auto; margin-top:18px; border-radius:var(--radius-sm); border:1px solid var(--border);}
+table{width:100%; border-collapse:collapse; font-size:13.5px;}
+th{
+  text-align:right; padding:12px 14px; background:var(--bg-2); color:var(--text-faint);
+  font-weight:700; font-size:11.5px; letter-spacing:0.4px; text-transform:uppercase;
+  border-bottom:1px solid var(--border);
+}
+td{padding:12px 14px; border-bottom:1px solid var(--border); color:var(--text);}
+tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:rgba(255,255,255,0.02);}
+.pill{display:inline-block; padding:3px 10px; border-radius:100px; font-size:11.5px; font-weight:600; background:var(--surface-3); color:var(--text-dim);}
+.icon-btn{width:28px; height:28px; border-radius:7px; display:inline-flex; align-items:center; justify-content:center; font-size:13px;}
+.icon-btn:hover{background:var(--surface-3);}
+.icon-btn.danger:hover{background:var(--danger-soft); color:#E4938A;}
+
+tr.editing-row{background:rgba(201,166,91,0.05);}
+tr.editing-row td input, tr.editing-row td select{
+  width:100%; padding:7px 9px; border-radius:7px; background:var(--bg-2);
+  border:1px solid var(--gold); font-size:13px; color:var(--text);
+}
+.icon-btn[data-save-nominee-edit], .icon-btn[data-save-evaluator-edit]{color:var(--ok);}
+.icon-btn[data-save-nominee-edit]:hover, .icon-btn[data-save-evaluator-edit]:hover{background:rgba(127,174,142,0.15);}
+
+/* ---------- Evaluator picker ---------- */
+.evaluator-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; max-width:760px; margin:0 auto;}
+@media (max-width:700px){ .evaluator-grid{grid-template-columns:repeat(2,1fr);} }
+.evaluator-card{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:22px 14px; text-align:center; transition:all .18s ease;
+}
+.evaluator-card:hover{border-color:var(--gold); background:var(--surface-2); transform:translateY(-2px);}
+.eval-avatar{
+  width:52px; height:52px; border-radius:50%; margin:0 auto 12px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(160deg, var(--surface-3), var(--bg-2)); border:1px solid var(--border-strong);
+  font-family:var(--font-display); font-weight:800; font-size:18px; color:var(--gold-bright);
+}
+.evaluator-card h4{font-size:14.5px; font-weight:700;}
+.evaluator-card .prog{font-size:11.5px; color:var(--text-faint); margin-top:5px;}
+
+/* ---------- Evaluate screen ---------- */
+.eval-toolbar{
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;
+  padding:14px 18px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  flex-wrap:wrap; gap:10px;
+}
+.eval-toolbar .who{display:flex; align-items:center; gap:12px;}
+.eval-toolbar .who .eval-avatar{width:38px; height:38px; font-size:14px; margin:0;}
+.save-status{font-size:12px; color:var(--text-faint); display:flex; align-items:center; gap:6px;}
+.save-status.saved{color:var(--ok);}
+.save-status .dot{width:6px; height:6px; border-radius:50%; background:currentColor;}
+
+.nominee-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:14px; overflow:hidden;}
+.nominee-head{display:flex; align-items:center; justify-content:space-between; padding:18px 20px; cursor:pointer;}
+.nominee-head .info h4{font-size:15.5px; font-weight:700;}
+.nominee-head .info .meta{font-size:12px; color:var(--text-dim); margin-top:4px; display:flex; gap:8px; flex-wrap:wrap;}
+.nominee-head .right{display:flex; align-items:center; gap:14px;}
+.nominee-score{font-family:var(--font-display); font-weight:800; font-size:20px; color:var(--gold-bright); min-width:48px; text-align:center;}
+.nominee-score.empty{color:var(--text-faint); font-size:13px; font-weight:600;}
+.chevron{transition:transform .2s ease; color:var(--text-faint);}
+.nominee-card.open .chevron{transform:rotate(180deg);}
+
+.criteria-body{max-height:0; overflow:hidden; transition:max-height .25s ease;}
+.nominee-card.open .criteria-body{max-height:900px;}
+.criteria-inner{padding:4px 20px 22px; border-top:1px solid var(--border);}
+.criterion-row{display:flex; align-items:center; justify-content:space-between; padding:14px 0; gap:16px; flex-wrap:wrap;}
+.criterion-row + .criterion-row{border-top:1px solid var(--border);}
+.criterion-label{min-width:220px;}
+.criterion-label .name{font-size:13.5px; font-weight:600;}
+.criterion-label .weight{font-size:11px; color:var(--text-faint); margin-top:2px;}
+.scale{display:flex; gap:6px;}
+.scale button{
+  width:36px; height:36px; border-radius:9px; border:1px solid var(--border-strong);
+  background:var(--bg-2); font-weight:700; font-size:13.5px; color:var(--text-dim); transition:all .15s ease;
+}
+.scale button:hover{border-color:var(--gold);}
+.scale button.sel{background:var(--gold); border-color:var(--gold); color:#1B1200;}
+
+/* ---------- Results ---------- */
+.podium{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:28px; align-items:end;}
+@media (max-width:700px){ .podium{grid-template-columns:1fr;} }
+.podium-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:24px 16px; text-align:center;}
+.podium-card.rank1{border-color:rgba(201,166,91,0.4); background:linear-gradient(180deg, rgba(201,166,91,0.09), var(--surface)); padding-top:34px;}
+.medal{position:relative; width:56px; height:56px; margin:0 auto 14px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:900; font-size:19px; color:#1B1200;}
+.medal::before,.medal::after{content:''; position:absolute; top:68%; width:14px; height:32px; clip-path:polygon(0 0,100% 0,50% 100%); z-index:-1;}
+.medal::before{right:38px; transform:rotate(14deg);}
+.medal::after{left:38px; transform:rotate(-14deg);}
+.medal.gold{background:linear-gradient(160deg, var(--gold-bright), var(--gold));}
+.medal.gold::before,.medal.gold::after{background:var(--gold);}
+.medal.silver{background:linear-gradient(160deg,#DCE4E5, var(--silver));}
+.medal.silver::before,.medal.silver::after{background:var(--silver);}
+.medal.bronze{background:linear-gradient(160deg,#DA9C6B, var(--bronze));}
+.medal.bronze::before,.medal.bronze::after{background:var(--bronze);}
+.podium-card h4{font-size:15.5px; font-weight:700; margin-bottom:4px;}
+.podium-card .cat{font-size:11.5px; color:var(--text-dim);}
+.podium-card .sc{font-family:var(--font-display); font-weight:800; font-size:26px; color:var(--gold-bright); margin-top:10px;}
+
+.rank-row{display:flex; align-items:center; gap:16px; padding:14px 18px; border-bottom:1px solid var(--border);}
+.rank-row:last-child{border-bottom:none;}
+.rank-num{width:30px; height:30px; border-radius:8px; background:var(--bg-2); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:var(--text-dim); flex-shrink:0;}
+.rank-info{flex:1; min-width:0;}
+.rank-info h5{font-size:14px; font-weight:700;}
+.rank-info .meta{font-size:11.5px; color:var(--text-dim); margin-top:3px;}
+.rank-score{font-family:var(--font-display); font-weight:800; font-size:17px; color:var(--gold-bright); flex-shrink:0;}
+.rank-progress{font-size:11px; color:var(--text-faint); flex-shrink:0; min-width:70px; text-align:left;}
+
+.empty-state{text-align:center; padding:60px 20px; color:var(--text-dim);}
+.empty-state .ic{font-size:34px; margin-bottom:14px; opacity:0.6;}
+.empty-state h4{font-family:var(--font-display); font-size:17px; margin-bottom:6px; color:var(--text);}
+.empty-state p{font-size:13px; max-width:340px; margin:0 auto;}
+
+.loading-wrap{display:flex; align-items:center; justify-content:center; min-height:60vh; color:var(--text-dim); font-size:14px; gap:10px;}
+.spinner{width:16px; height:16px; border-radius:50%; border:2px solid var(--border-strong); border-top-color:var(--gold); animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.toast{
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--surface-3); border:1px solid var(--border-strong); color:var(--text);
+  padding:12px 20px; border-radius:10px; font-size:13px; opacity:0; transition:all .25s ease; z-index:100;
+  box-shadow:0 10px 30px rgba(0,0,0,0.4); pointer-events:none;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+.footnote{margin-top:36px; text-align:center; color:var(--text-faint); font-size:12px;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     إعدادات Firebase — عدّل القيم التالية بمعلومات مشروعك:
+     Firebase Console → ⚙️ Project settings → عام → "Your apps"
+     → أنشئ Web App → انسخ القيم إلى هنا.
+     ============================================================ */
+  var firebaseConfig = {
+    apiKey: "PASTE_YOUR_API_KEY",
+    authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+    projectId: "PASTE_YOUR_PROJECT_ID",
+    storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+    messagingSenderId: "PASTE_YOUR_SENDER_ID",
+    appId: "PASTE_YOUR_APP_ID"
+  };
+  var COLLECTION = "ahsant_data";
+  var db = null;
+  var scoreUnsubs = {};
+  var loadedFlags = {nominees:false, evaluators:false};
+
+  /* ============ Constants (mirrors original workbook) ============ */
+  var CATEGORIES = [
+    "Safety Champion",
+    "Call Center Shining Star",
+    "Customer Service Champion",
+    "NRW Champion",
+    "Walking the Extra Mile",
+    "Al Qudwah",
+    "Spot Recognition – Cost & Innovation"
+  ];
+  var DIVISIONS = ["Asset Planning","Asset Engineering","Asset Performance","Chief Office"];
+  var CRITERIA = [
+    {key:"relevance", name:"الصلة بالجائزة", en:"Relevance to Award", weight:0.20},
+    {key:"impact", name:"الأثر", en:"Impact", weight:0.25},
+    {key:"initiative", name:"المبادرة", en:"Initiative", weight:0.15},
+    {key:"sustainability", name:"الاستدامة", en:"Sustainability", weight:0.15},
+    {key:"values", name:"القيم والسلوك", en:"Values & Behavior", weight:0.15},
+    {key:"evidence", name:"جودة الأدلة", en:"Evidence Quality", weight:0.10}
+  ];
+  var DEFAULT_EVALUATORS = [
+    {id:"e0", name:"Saif"}, {id:"e1", name:"Said"}, {id:"e2", name:"Suhaila"},
+    {id:"e3", name:"Bader"}, {id:"e4", name:"Buthaina"}, {id:"e5", name:"Ahlam"},
+    {id:"e6", name:"مقيّم 7"}, {id:"e7", name:"مقيّم 8"}
+  ];
+  var SCALE_MAX = 5;
+
+  /* ============ State ============ */
+  var state = {
+    screen: "home",           // home | admin | evaluate | results
+    loading: true,
+    error: null,
+    nominees: [],             // {id,name,staffId,division,category}
+    evaluators: [],           // {id,name}
+    scores: {},                // evaluatorId -> { nomineeId -> {relevance..evidence} }
+    currentEvaluator: null,    // evaluator id while in evaluate screen
+    openNominee: null,
+    saveStatus: "",           // '' | 'saving' | 'saved'
+    nomineeCounter: 1,
+    evaluatorCounter: DEFAULT_EVALUATORS.length,
+    editingNomineeId: null,
+    editingEvaluatorId: null
+  };
+
+  var root = document.getElementById("root");
+  var saveTimer = null;
+  var toastTimer = null;
+
+  /* ============ Firebase / storage helpers ============ */
+  function docRef(key){ return db.collection(COLLECTION).doc(key); }
+
+  async function setDoc(key, value){
+    try{
+      await docRef(key).set({value: value}, {merge:false});
+      return true;
+    }catch(e){ console.error("setDoc failed:", key, e); showToast("تعذّر الحفظ، تحقق من الاتصال"); return false; }
+  }
+  async function updateMeta(){
+    try{
+      await docRef("meta").set({nomineeCounter: state.nomineeCounter, evaluatorCounter: state.evaluatorCounter}, {merge:true});
+      return true;
+    }catch(e){ console.error(e); return false; }
+  }
+  async function deleteDoc(key){
+    try{ await docRef(key).delete(); return true; }catch(e){ console.error(e); return false; }
+  }
+
+  function initApp(){
+    if(!window.firebase || firebaseConfig.apiKey.indexOf("PASTE_") === 0){
+      state.loading = false;
+      state.error = "لم يتم إعداد Firebase بعد. افتح ملف الكود وضع بيانات مشروعك في firebaseConfig أعلى السكربت.";
+      render();
+      return;
+    }
+    try{
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+    }catch(e){
+      state.loading = false;
+      state.error = "تعذّر الاتصال بـ Firebase. تحقق من صحة إعدادات المشروع.";
+      render();
+      return;
+    }
+    setupListeners();
+  }
+
+  function setupListeners(){
+    docRef("meta").onSnapshot(function(doc){
+      var d = doc.exists ? doc.data() : {};
+      state.nomineeCounter = d.nomineeCounter || 1;
+      state.evaluatorCounter = d.evaluatorCounter || DEFAULT_EVALUATORS.length;
+    }, onListenerError);
+
+    docRef("nominees").onSnapshot(function(doc){
+      state.nominees = doc.exists ? (doc.data().value || []) : [];
+      loadedFlags.nominees = true;
+      checkLoaded();
+      render();
+    }, onListenerError);
+
+    docRef("evaluators").onSnapshot(function(doc){
+      if(doc.exists){
+        state.evaluators = doc.data().value || [];
+      } else {
+        state.evaluators = DEFAULT_EVALUATORS.slice();
+        setDoc("evaluators", state.evaluators);
+      }
+      syncScoreListeners();
+      loadedFlags.evaluators = true;
+      checkLoaded();
+      render();
+    }, onListenerError);
+  }
+
+  function syncScoreListeners(){
+    var activeIds = state.evaluators.map(function(e){return e.id;});
+    Object.keys(scoreUnsubs).forEach(function(id){
+      if(activeIds.indexOf(id) === -1){
+        scoreUnsubs[id]();
+        delete scoreUnsubs[id];
+        delete state.scores[id];
+      }
+    });
+    activeIds.forEach(function(id){
+      if(!scoreUnsubs[id]){
+        scoreUnsubs[id] = docRef("scores_"+id).onSnapshot(function(doc){
+          state.scores[id] = doc.exists ? (doc.data().value || {}) : {};
+          render();
+        }, onListenerError);
+      }
+    });
+  }
+
+  function onListenerError(err){
+    console.error(err);
+    if(!state.nominees.length && state.loading){
+      state.loading = false;
+      state.error = "تعذّر قراءة البيانات من Firebase. تأكد من قواعد الأمان (Firestore Rules) في مشروعك.";
+      render();
+    } else {
+      showToast("تعذّر الاتصال بقاعدة البيانات مؤقتاً");
+    }
+  }
+
+  function checkLoaded(){
+    if(loadedFlags.nominees && loadedFlags.evaluators){ state.loading = false; }
+  }
+
+  function showToast(msg){
+    clearTimeout(toastTimer);
+    var t = document.getElementById("toast");
+    if(!t) return;
+    t.textContent = msg;
+    t.classList.add("show");
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  /* ============ Domain logic ============ */
+  function weightedScore(entry){
+    if(!entry) return null;
+    var sum = 0;
+    for(var i=0;i<CRITERIA.length;i++){
+      var v = entry[CRITERIA[i].key];
+      if(v === undefined || v === null) return null; // incomplete
+      sum += v * CRITERIA[i].weight;
+    }
+    return sum;
+  }
+
+  function nomineeResult(nomineeId){
+    var vals = [];
+    for(var i=0;i<state.evaluators.length;i++){
+      var evId = state.evaluators[i].id;
+      var entry = state.scores[evId] && state.scores[evId][nomineeId];
+      var ws = weightedScore(entry);
+      if(ws !== null) vals.push(ws);
+    }
+    var avg = vals.length ? (vals.reduce(function(a,b){return a+b;},0) / vals.length) : null;
+    return { avg: avg, count: vals.length, total: state.evaluators.length };
+  }
+
+  function rankedNominees(){
+    var list = state.nominees.map(function(n){
+      var r = nomineeResult(n.id);
+      return Object.assign({}, n, {score:r.avg, evalCount:r.count, evalTotal:r.total});
+    });
+    list.sort(function(a,b){
+      if(a.score === null && b.score === null) return 0;
+      if(a.score === null) return 1;
+      if(b.score === null) return -1;
+      return b.score - a.score;
+    });
+    return list;
+  }
+
+  /* ============ Rendering ============ */
+  function render(){
+    if(state.error){
+      root.innerHTML = shellWrap(''
+        + '<div class="empty-state" style="max-width:520px; margin:60px auto;">'
+        +   '<div class="ic">⚠️</div><h4>تعذّر الاتصال بقاعدة البيانات</h4>'
+        +   '<p>'+escapeHtml(state.error)+'</p>'
+        + '</div>');
+      return;
+    }
+    if(state.loading){
+      root.innerHTML = shellWrap('<div class="loading-wrap"><div class="spinner"></div> جارٍ تحميل البيانات…</div>');
+      return;
+    }
+    var body = "";
+    if(state.screen === "home") body = renderHome();
+    else if(state.screen === "admin") body = renderAdmin();
+    else if(state.screen === "evaluate") body = renderEvaluate();
+    else if(state.screen === "results") body = renderResults();
+
+    root.innerHTML = shellWrap(body);
+    bindEvents();
+  }
+
+  function shellWrap(body){
+    return ''
+    + '<div class="app-shell">'
+    +   '<header class="topbar">'
+    +     '<div class="brand" data-nav="home">'
+    +       '<div class="brand-mark">أح</div>'
+    +       '<div><div class="brand-name">أحسنت</div><div class="brand-sub">منصة تقييم جوائز التميّز</div></div>'
+    +     '</div>'
+    +     '<nav class="nav-tabs">'
+    +       navTab("admin","لوحة الإدارة") + navTab("evaluate","التقييم") + navTab("results","النتائج")
+    +     '</nav>'
+    +   '</header>'
+    +   '<main><div class="container">' + body + '</div></main>'
+    +   '<div id="toast" class="toast"></div>'
+    + '</div>';
+  }
+  function navTab(screen,label){
+    var active = state.screen===screen ? " active":"";
+    return '<button class="nav-tab'+active+'" data-nav="'+screen+'">'+label+'</button>';
+  }
+
+  function renderHome(){
+    return ''
+    + '<div class="hero">'
+    +   '<div class="hero-medal-wrap"><div class="medal gold" style="width:64px;height:64px;font-size:22px;">أح</div></div>'
+    +   '<div class="eyebrow">برنامج التميّز السنوي</div>'
+    +   '<h1>أحسنت</h1>'
+    +   '<p>منصّة تقييم الترشيحات لجوائز التميّز — كل مقيّم يمنح درجاته بسرية، والنتيجة النهائية تُحسب تلقائياً كمتوسط تقييمات من أنهوا التصويت.</p>'
+    + '</div>'
+    + '<div class="role-grid">'
+    +   roleCard("admin","🗂️","لوحة الإدارة","إضافة المرشحين وتحديد بياناتهم، وتعديل أسماء المقيّمين.")
+    +   roleCard("evaluate","🖊️","تقييم المرشحين","اختر اسمك وابدأ بتقييم كل مرشح على معايير الجائزة.")
+    +   roleCard("results","🏆","النتائج والترتيب","تابع الترتيب اللحظي للمرشحين حسب النتيجة الموزونة.")
+    + '</div>';
+  }
+  function roleCard(screen,icon,title,desc){
+    return '<div class="role-card" data-nav="'+screen+'">'
+      + '<div class="ic">'+icon+'</div>'
+      + '<h3>'+title+'</h3><p>'+desc+'</p>'
+      + '<div class="go">فتح ←</div></div>';
+  }
+
+  /* ---------- Admin ---------- */
+  function renderAdmin(){
+    var rows = state.nominees.map(function(n,idx){
+      if(state.editingNomineeId === n.id){
+        return '<tr class="editing-row">'
+          + '<td>'+(idx+1)+'</td>'
+          + '<td><input type="text" id="editNomineeName" value="'+escapeHtml(n.name)+'"></td>'
+          + '<td><input type="text" id="editNomineeStaffId" value="'+escapeHtml(n.staffId||"")+'"></td>'
+          + '<td><select id="editNomineeDivision">'+optionsHtml(DIVISIONS, n.division)+'</select></td>'
+          + '<td><select id="editNomineeCategory">'+optionsHtml(CATEGORIES, n.category)+'</select></td>'
+          + '<td style="white-space:nowrap;">'
+          +   '<button class="icon-btn" data-save-nominee-edit="'+n.id+'" title="حفظ">✓</button>'
+          +   '<button class="icon-btn" data-cancel-nominee-edit="1" title="إلغاء">✕</button>'
+          + '</td>'
+          + '</tr>';
+      }
+      return '<tr>'
+        + '<td>'+(idx+1)+'</td>'
+        + '<td>'+escapeHtml(n.name)+'</td>'
+        + '<td>'+escapeHtml(n.staffId||'—')+'</td>'
+        + '<td><span class="pill">'+escapeHtml(n.division)+'</span></td>'
+        + '<td><span class="pill">'+escapeHtml(n.category)+'</span></td>'
+        + '<td style="white-space:nowrap;">'
+        +   '<button class="icon-btn" data-edit-nominee="'+n.id+'" title="تعديل">✎</button>'
+        +   '<button class="icon-btn danger" data-del-nominee="'+n.id+'" title="حذف">✕</button>'
+        + '</td>'
+        + '</tr>';
+    }).join("");
+
+    var evalRows = state.evaluators.map(function(e,idx){
+      if(state.editingEvaluatorId === e.id){
+        return '<tr class="editing-row">'
+          + '<td>'+(idx+1)+'</td>'
+          + '<td><input type="text" id="editEvaluatorName" value="'+escapeHtml(e.name)+'"></td>'
+          + '<td style="white-space:nowrap;">'
+          +   '<button class="icon-btn" data-save-evaluator-edit="'+e.id+'" title="حفظ">✓</button>'
+          +   '<button class="icon-btn" data-cancel-evaluator-edit="1" title="إلغاء">✕</button>'
+          + '</td>'
+          + '</tr>';
+      }
+      return '<tr>'
+        + '<td>'+(idx+1)+'</td>'
+        + '<td>'+escapeHtml(e.name)+'</td>'
+        + '<td style="white-space:nowrap;">'
+        +   '<button class="icon-btn" data-edit-evaluator="'+e.id+'" title="تعديل">✎</button>'
+        +   '<button class="icon-btn danger" data-del-evaluator="'+e.id+'" title="حذف">✕</button>'
+        + '</td>'
+        + '</tr>';
+    }).join("");
+
+    return ''
+    + '<div class="section-head"><div><h2>لوحة الإدارة</h2><p>إدارة قائمة المرشحين ولجنة المقيّمين — التغييرات تُحفظ فوراً ويراها الجميع.</p></div>'
+    +   '<button class="btn btn-danger btn-sm" id="resetAllBtn">إعادة تعيين كل البيانات</button>'
+    + '</div>'
+
+    + '<div class="panel">'
+    +   '<div class="section-head" style="margin-bottom:14px;"><h2 style="font-size:16px;">إضافة مرشح جديد</h2></div>'
+    +   '<div class="form-grid">'
+    +     field('اسم المرشح','text','nomineeName','')
+    +     field('الرقم الوظيفي','text','nomineeStaffId','')
+    +     selectField('القسم','nomineeDivision', DIVISIONS)
+    +     selectField('فئة الجائزة','nomineeCategory', CATEGORIES)
+    +     '<button class="btn btn-gold" id="addNomineeBtn">إضافة</button>'
+    +   '</div>'
+    + '</div>'
+
+    + '<div class="panel">'
+    +   '<h2 style="font-size:16px; margin-bottom:4px;">المرشحون ('+state.nominees.length+')</h2>'
+    +   (state.nominees.length ? (
+    '<div class="table-wrap"><table><thead><tr><th>#</th><th>الاسم</th><th>الرقم الوظيفي</th><th>القسم</th><th>فئة الجائزة</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+      ) : '<div class="empty-state"><div class="ic">🗂️</div><h4>لا يوجد مرشحون بعد</h4><p>أضف أول مرشح باستخدام النموذج أعلاه.</p></div>')
+    + '</div>'
+
+    + '<div class="panel">'
+    +   '<div class="section-head" style="margin-bottom:14px;"><h2 style="font-size:16px;">إضافة مقيّم جديد</h2></div>'
+    +   '<div class="form-grid" style="grid-template-columns:1fr auto;">'
+    +     field('اسم المقيّم','text','evaluatorName','')
+    +     '<button class="btn btn-gold" id="addEvaluatorBtn">إضافة</button>'
+    +   '</div>'
+    + '</div>'
+
+    + '<div class="panel">'
+    +   '<h2 style="font-size:16px; margin-bottom:4px;">لجنة المقيّمين ('+state.evaluators.length+')</h2>'
+    +   (state.evaluators.length ? (
+    '<div class="table-wrap"><table><thead><tr><th>#</th><th>الاسم</th><th></th></tr></thead><tbody>'+evalRows+'</tbody></table></div>'
+      ) : '<div class="empty-state"><div class="ic">🧑‍⚖️</div><h4>لا يوجد مقيّمون بعد</h4><p>أضف أول عضو في لجنة التقييم باستخدام النموذج أعلاه.</p></div>')
+    + '</div>';
+  }
+  function optionsHtml(options, selected){
+    return options.map(function(o){
+      var sel = o===selected ? " selected":"";
+      return '<option value="'+escapeHtml(o)+'"'+sel+'>'+escapeHtml(o)+'</option>';
+    }).join("");
+  }
+  function field(label,type,id,val){
+    return '<div class="field"><label>'+label+'</label><input type="'+type+'" id="'+id+'" value="'+val+'"></div>';
+  }
+  function selectField(label,id,options){
+    var opts = options.map(function(o){ return '<option value="'+escapeHtml(o)+'">'+escapeHtml(o)+'</option>'; }).join("");
+    return '<div class="field"><label>'+label+'</label><select id="'+id+'">'+opts+'</select></div>';
+  }
+
+  /* ---------- Evaluate ---------- */
+  function renderEvaluate(){
+    if(!state.currentEvaluator){
+      var cards = state.evaluators.map(function(e){
+        var doneCount = countCompleted(e.id);
+        return '<div class="evaluator-card" data-pick-eval="'+e.id+'">'
+          + '<div class="eval-avatar">'+initials(e.name)+'</div>'
+          + '<h4>'+escapeHtml(e.name)+'</h4>'
+          + '<div class="prog">'+doneCount+' / '+state.nominees.length+' مكتمل</div>'
+          + '</div>';
+      }).join("");
+      return ''
+      + '<div class="section-head"><div><h2>من أنت؟</h2><p>اختر اسمك للبدء بتقييم المرشحين.</p></div></div>'
+      + '<div class="evaluator-grid">'+cards+'</div>';
+    }
+
+    var ev = state.evaluators.find(function(e){return e.id===state.currentEvaluator;});
+    if(!ev){ state.currentEvaluator=null; return renderEvaluate(); }
+    var doneCount = countCompleted(ev.id);
+
+    if(!state.nominees.length){
+      return ''
+      + '<button class="back-link" data-back-eval="1">← تغيير المقيّم</button>'
+      + '<div class="empty-state"><div class="ic">📋</div><h4>لا يوجد مرشحون بعد</h4><p>يحتاج المسؤول إلى إضافة المرشحين أولاً من لوحة الإدارة.</p></div>';
+    }
+
+    var cards = state.nominees.map(function(n){ return renderNomineeCard(n, ev.id); }).join("");
+
+    return ''
+    + '<button class="back-link" data-back-eval="1">← تغيير المقيّم</button>'
+    + '<div class="eval-toolbar">'
+    +   '<div class="who"><div class="eval-avatar">'+initials(ev.name)+'</div>'
+    +     '<div><div style="font-weight:700; font-size:14.5px;">'+escapeHtml(ev.name)+'</div>'
+    +     '<div style="font-size:12px;color:var(--text-dim);">'+doneCount+' من '+state.nominees.length+' مرشح تم تقييمهم</div></div></div>'
+    +   '<div class="save-status" id="saveStatus"><span class="dot"></span><span id="saveStatusText">جاهز</span></div>'
+    + '</div>'
+    + cards;
+  }
+
+  function countCompleted(evId){
+    var s = state.scores[evId] || {};
+    var c = 0;
+    state.nominees.forEach(function(n){ if(weightedScore(s[n.id]) !== null) c++; });
+    return c;
+  }
+
+  function renderNomineeCard(n, evId){
+    var entry = (state.scores[evId] && state.scores[evId][n.id]) || {};
+    var ws = weightedScore(entry);
+    var open = state.openNominee === n.id;
+    var rows = CRITERIA.map(function(c){
+      var val = entry[c.key];
+      var btns = [];
+      for(var i=1;i<=SCALE_MAX;i++){
+        var sel = val===i ? " sel":"";
+        btns.push('<button class="'+sel.trim()+'" data-score-btn data-nominee="'+n.id+'" data-eval="'+evId+'" data-criterion="'+c.key+'" data-value="'+i+'">'+i+'</button>');
+      }
+      return '<div class="criterion-row">'
+        + '<div class="criterion-label"><div class="name">'+c.name+' <span style="color:var(--text-faint); font-weight:400;">('+c.en+')</span></div><div class="weight">وزن '+Math.round(c.weight*100)+'%</div></div>'
+        + '<div class="scale">'+btns.join("")+'</div>'
+        + '</div>';
+    }).join("");
+
+    return '<div class="nominee-card'+(open?" open":"")+'" data-nominee-id="'+n.id+'">'
+      + '<div class="nominee-head" data-toggle-nominee="'+n.id+'">'
+      +   '<div class="info"><h4>'+escapeHtml(n.name)+'</h4>'
+      +     '<div class="meta"><span class="pill">'+escapeHtml(n.division)+'</span><span class="pill">'+escapeHtml(n.category)+'</span></div></div>'
+      +   '<div class="right">'
+      +     (ws!==null ? '<div class="nominee-score">'+ws.toFixed(2)+'</div>' : '<div class="nominee-score empty">لم يُقيَّم</div>')
+      +     '<div class="chevron">▾</div>'
+      +   '</div>'
+      + '</div>'
+      + '<div class="criteria-body"><div class="criteria-inner">'+rows+'</div></div>'
+      + '</div>';
+  }
+
+  /* ---------- Results ---------- */
+  function renderResults(){
+    var list = rankedNominees();
+    if(!list.length){
+      return '<div class="section-head"><div><h2>النتائج والترتيب</h2><p>الترتيب اللحظي حسب متوسط تقييمات اللجنة.</p></div></div>'
+        + '<div class="empty-state"><div class="ic">🏆</div><h4>لا توجد نتائج بعد</h4><p>أضف مرشحين من لوحة الإدارة وابدأ التقييم لتظهر النتائج هنا.</p></div>';
+    }
+
+    var top3 = list.slice(0,3);
+    var rest = list.slice(3);
+    var medalClasses = ["gold","silver","bronze"];
+    var podium = top3.map(function(n,idx){
+      return '<div class="podium-card rank'+(idx+1)+'">'
+        + '<div class="medal '+medalClasses[idx]+'">'+(idx+1)+'</div>'
+        + '<h4>'+escapeHtml(n.name)+'</h4>'
+        + '<div class="cat">'+escapeHtml(n.category)+'</div>'
+        + '<div class="sc">'+(n.score!==null? n.score.toFixed(2):'—')+'</div>'
+        + '<div style="font-size:11px;color:var(--text-faint); margin-top:6px;">'+n.evalCount+' / '+n.evalTotal+' مقيّم</div>'
+        + '</div>';
+    }).join("");
+
+    var rows = rest.map(function(n,idx){
+      return '<div class="rank-row">'
+        + '<div class="rank-num">'+(idx+4)+'</div>'
+        + '<div class="rank-info"><h5>'+escapeHtml(n.name)+'</h5><div class="meta">'+escapeHtml(n.division)+' · '+escapeHtml(n.category)+'</div></div>'
+        + '<div class="rank-progress">'+n.evalCount+' / '+n.evalTotal+' مقيّم</div>'
+        + '<div class="rank-score">'+(n.score!==null? n.score.toFixed(2):'—')+'</div>'
+        + '</div>';
+    }).join("");
+
+    return ''
+    + '<div class="section-head"><div><h2>النتائج والترتيب</h2><p>الترتيب اللحظي حسب متوسط تقييمات المقيّمين الذين أنهوا التصويت لكل مرشح.</p></div>'
+    +   '<span class="save-status saved" style="background:var(--surface); padding:8px 14px; border-radius:9px; border:1px solid var(--border);"><span class="dot"></span> يتحدث تلقائياً</span></div>'
+    + '<div class="podium">'+podium+'</div>'
+    + (rows ? '<div class="panel" style="padding:6px 0;">'+rows+'</div>' : '')
+    + '<div class="footnote">النتيجة = متوسط الدرجات الموزونة من المقيّمين الذين أكملوا تقييم هذا المرشح فقط.</div>';
+  }
+
+  function initials(name){
+    var parts = name.trim().split(/\s+/);
+    var s = parts.length>1 ? (parts[0][0]+parts[1][0]) : name.slice(0,2);
+    return s;
+  }
+  function escapeHtml(str){
+    if(str===undefined||str===null) return "";
+    return String(str).replace(/[&<>"']/g, function(m){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m];
+    });
+  }
+
+  /* ============ Events ============ */
+  function bindEvents(){
+    root.querySelectorAll("[data-nav]").forEach(function(el){
+      el.addEventListener("click", function(){
+        state.screen = el.getAttribute("data-nav");
+        if(state.screen === "evaluate"){ /* keep currentEvaluator if set */ }
+        render();
+      });
+    });
+
+    // Admin: add nominee
+    var addBtn = document.getElementById("addNomineeBtn");
+    if(addBtn){
+      addBtn.addEventListener("click", async function(){
+        var name = document.getElementById("nomineeName").value.trim();
+        var staffId = document.getElementById("nomineeStaffId").value.trim();
+        var division = document.getElementById("nomineeDivision").value;
+        var category = document.getElementById("nomineeCategory").value;
+        if(!name){ showToast("الرجاء إدخال اسم المرشح"); return; }
+        var id = "n" + state.nomineeCounter;
+        state.nomineeCounter++;
+        state.nominees.push({id:id, name:name, staffId:staffId, division:division, category:category});
+        addBtn.disabled = true;
+        await setDoc("nominees", state.nominees);
+        await updateMeta();
+        showToast("تمت إضافة المرشح");
+        render();
+      });
+    }
+
+    // Admin: delete nominee
+    root.querySelectorAll("[data-del-nominee]").forEach(function(el){
+      el.addEventListener("click", async function(){
+        var id = el.getAttribute("data-del-nominee");
+        if(!confirm("هل تريد حذف هذا المرشح؟")) return;
+        state.nominees = state.nominees.filter(function(n){return n.id!==id;});
+        await setDoc("nominees", state.nominees);
+        showToast("تم حذف المرشح");
+        render();
+      });
+    });
+
+    // Admin: edit nominee (enter edit mode)
+    root.querySelectorAll("[data-edit-nominee]").forEach(function(el){
+      el.addEventListener("click", function(){
+        state.editingNomineeId = el.getAttribute("data-edit-nominee");
+        render();
+      });
+    });
+    root.querySelectorAll("[data-cancel-nominee-edit]").forEach(function(el){
+      el.addEventListener("click", function(){
+        state.editingNomineeId = null;
+        render();
+      });
+    });
+    root.querySelectorAll("[data-save-nominee-edit]").forEach(function(el){
+      el.addEventListener("click", async function(){
+        var id = el.getAttribute("data-save-nominee-edit");
+        var n = state.nominees.find(function(x){return x.id===id;});
+        if(!n) return;
+        var name = document.getElementById("editNomineeName").value.trim();
+        if(!name){ showToast("الرجاء إدخال اسم المرشح"); return; }
+        n.name = name;
+        n.staffId = document.getElementById("editNomineeStaffId").value.trim();
+        n.division = document.getElementById("editNomineeDivision").value;
+        n.category = document.getElementById("editNomineeCategory").value;
+        state.editingNomineeId = null;
+        await setDoc("nominees", state.nominees);
+        showToast("تم حفظ التعديل");
+        render();
+      });
+    });
+
+    // Admin: add evaluator
+    var addEvalBtn = document.getElementById("addEvaluatorBtn");
+    if(addEvalBtn){
+      addEvalBtn.addEventListener("click", async function(){
+        var name = document.getElementById("evaluatorName").value.trim();
+        if(!name){ showToast("الرجاء إدخال اسم المقيّم"); return; }
+        var id = "ev" + state.evaluatorCounter;
+        state.evaluatorCounter++;
+        state.evaluators.push({id:id, name:name});
+        state.scores[id] = {};
+        await setDoc("evaluators", state.evaluators);
+        await updateMeta();
+        showToast("تمت إضافة المقيّم");
+        render();
+      });
+    }
+
+    // Admin: delete evaluator
+    root.querySelectorAll("[data-del-evaluator]").forEach(function(el){
+      el.addEventListener("click", async function(){
+        var id = el.getAttribute("data-del-evaluator");
+        if(!confirm("سيتم حذف هذا المقيّم وجميع درجاته. هل أنت متأكد؟")) return;
+        state.evaluators = state.evaluators.filter(function(e){return e.id!==id;});
+        delete state.scores[id];
+        if(state.currentEvaluator === id) state.currentEvaluator = null;
+        await setDoc("evaluators", state.evaluators);
+        await deleteDoc("scores_"+id);
+        showToast("تم حذف المقيّم");
+        render();
+      });
+    });
+
+    // Admin: edit evaluator (enter edit mode)
+    root.querySelectorAll("[data-edit-evaluator]").forEach(function(el){
+      el.addEventListener("click", function(){
+        state.editingEvaluatorId = el.getAttribute("data-edit-evaluator");
+        render();
+      });
+    });
+    root.querySelectorAll("[data-cancel-evaluator-edit]").forEach(function(el){
+      el.addEventListener("click", function(){
+        state.editingEvaluatorId = null;
+        render();
+      });
+    });
+    root.querySelectorAll("[data-save-evaluator-edit]").forEach(function(el){
+      el.addEventListener("click", async function(){
+        var id = el.getAttribute("data-save-evaluator-edit");
+        var ev = state.evaluators.find(function(x){return x.id===id;});
+        if(!ev) return;
+        var name = document.getElementById("editEvaluatorName").value.trim();
+        if(!name){ showToast("الرجاء إدخال اسم المقيّم"); return; }
+        ev.name = name;
+        state.editingEvaluatorId = null;
+        await setDoc("evaluators", state.evaluators);
+        showToast("تم حفظ التعديل");
+        render();
+      });
+    });
+
+    // Admin: reset all
+    var resetBtn = document.getElementById("resetAllBtn");
+    if(resetBtn){
+      resetBtn.addEventListener("click", async function(){
+        if(!confirm("سيتم حذف جميع المرشحين وكل درجات التقييم. هل أنت متأكد؟")) return;
+        state.nominees = [];
+        state.nomineeCounter = 1;
+        var scores = {};
+        for(var i=0;i<state.evaluators.length;i++){ scores[state.evaluators[i].id] = {}; }
+        state.scores = scores;
+        await setDoc("nominees", []);
+        await updateMeta();
+        for(var j=0;j<state.evaluators.length;j++){
+          await setDoc("scores_"+state.evaluators[j].id, {});
+        }
+        showToast("تمت إعادة تعيين البيانات");
+        render();
+      });
+    }
+
+    // Evaluate: pick evaluator
+    root.querySelectorAll("[data-pick-eval]").forEach(function(el){
+      el.addEventListener("click", function(){
+        state.currentEvaluator = el.getAttribute("data-pick-eval");
+        state.openNominee = null;
+        render();
+      });
+    });
+    var backEval = document.querySelector("[data-back-eval]");
+    if(backEval){
+      backEval.addEventListener("click", function(){
+        state.currentEvaluator = null;
+        render();
+      });
+    }
+
+    // Evaluate: toggle nominee card
+    root.querySelectorAll("[data-toggle-nominee]").forEach(function(el){
+      el.addEventListener("click", function(){
+        var id = el.getAttribute("data-toggle-nominee");
+        state.openNominee = state.openNominee === id ? null : id;
+        render();
+      });
+    });
+
+    // Evaluate: score buttons
+    root.querySelectorAll("[data-score-btn]").forEach(function(el){
+      el.addEventListener("click", function(){
+        var nomineeId = el.getAttribute("data-nominee");
+        var evId = el.getAttribute("data-eval");
+        var criterion = el.getAttribute("data-criterion");
+        var value = parseInt(el.getAttribute("data-value"),10);
+        if(!state.scores[evId]) state.scores[evId] = {};
+        if(!state.scores[evId][nomineeId]) state.scores[evId][nomineeId] = {};
+        // toggle off if clicking same value again
+        if(state.scores[evId][nomineeId][criterion] === value){
+          delete state.scores[evId][nomineeId][criterion];
+        } else {
+          state.scores[evId][nomineeId][criterion] = value;
+        }
+        state.openNominee = nomineeId;
+        scheduleSave(evId);
+        render();
+      });
+    });
+
+  }
+
+  function scheduleSave(evId){
+    var statusEl = document.getElementById("saveStatus");
+    var statusText = document.getElementById("saveStatusText");
+    if(statusEl){ statusEl.classList.remove("saved"); }
+    if(statusText){ statusText.textContent = "جارٍ الحفظ…"; }
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async function(){
+      var ok = await setDoc("scores_"+evId, state.scores[evId]||{});
+      var statusEl2 = document.getElementById("saveStatus");
+      var statusText2 = document.getElementById("saveStatusText");
+      if(statusEl2 && statusText2){
+        if(ok){ statusEl2.classList.add("saved"); statusText2.textContent = "تم الحفظ"; }
+        else{ statusText2.textContent = "تعذّر الحفظ، حاول مجدداً"; }
+      }
+    }, 500);
+  }
+
+  /* ============ Init ============ */
+  initApp();
+})();
+</script>
+</body>
+</html>
