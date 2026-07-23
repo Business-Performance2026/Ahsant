@@ -345,6 +345,21 @@ tr.editing-row td input, tr.editing-row td select{
 }
 .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
 
+.install-banner{
+  position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+  width:calc(100% - 32px); max-width:420px;
+  background:var(--surface); border:1px solid var(--border-strong); border-radius:14px;
+  padding:14px 16px; display:flex; align-items:center; gap:12px;
+  box-shadow:0 16px 46px rgba(0,0,0,0.5); z-index:90;
+  animation:installBannerIn .3s ease;
+}
+@keyframes installBannerIn{ from{opacity:0; transform:translateX(-50%) translateY(16px);} to{opacity:1; transform:translateX(-50%) translateY(0);} }
+.install-banner-icon{font-size:26px; flex-shrink:0;}
+.install-banner-text{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;}
+.install-banner-text strong{font-family:var(--font-display); font-size:14px; font-weight:800;}
+.install-banner-text span{font-size:12px; color:var(--text-dim); line-height:1.5;}
+.install-banner-actions{display:flex; align-items:center; gap:6px; flex-shrink:0;}
+
 .footnote{margin-top:36px; text-align:center; color:var(--text-faint); font-size:12px;}
 </style>
 </head>
@@ -475,7 +490,11 @@ tr.editing-row td input, tr.editing-row td select{
     confirmDelNominee:{en:"Delete this nominee?", ar:"هل تريد حذف هذا المرشح؟"},
     confirmDelEvaluator:{en:"This will delete the evaluator and all of their scores. Are you sure?", ar:"سيتم حذف هذا المقيّم وجميع درجاته. هل أنت متأكد؟"},
     confirmReset:{en:"This will delete all nominees and every evaluation score. Are you sure?", ar:"سيتم حذف جميع المرشحين وكل درجات التقييم. هل أنت متأكد؟"},
-    installApp:{en:"Install App", ar:"تثبيت التطبيق"}
+    installApp:{en:"Install App", ar:"تثبيت التطبيق"},
+    installBannerTitle:{en:"Install Ahsant", ar:"تثبيت تطبيق أحسنت"},
+    installBannerBody:{en:"Add this app to your phone's home screen for quick access.", ar:"أضف هذا التطبيق إلى الشاشة الرئيسية بهاتفك للوصول السريع."},
+    installBannerIOS:{en:"Tap the Share button, then \"Add to Home Screen\".", ar:"اضغط زر المشاركة، ثم \"إضافة إلى الشاشة الرئيسية\"."},
+    installNow:{en:"Install", ar:"تثبيت"}
   };
   function tr(key){
     var row = I18N[key];
@@ -538,13 +557,27 @@ tr.editing-row td input, tr.editing-row td select{
     editingEvaluatorId: null,
     adminAuthed: false,
     adminError: "",
-    canInstall: false
+    canInstall: false,
+    showInstallBanner: false,
+    installPlatform: null
   };
   try{ state.adminAuthed = sessionStorage.getItem("ahsant_admin_authed") === "1"; }catch(e){}
   try{
     var savedLang = localStorage.getItem("ahsant_lang");
     state.lang = savedLang === "ar" || savedLang === "en" ? savedLang : "en";
   }catch(e){}
+
+  var installDismissed = false;
+  try{ installDismissed = sessionStorage.getItem("ahsant_install_dismissed") === "1"; }catch(e){}
+  (function detectIOSInstall(){
+    var ua = navigator.userAgent || navigator.vendor || "";
+    var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    var isStandalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+    if(isIOS && !isStandalone && !installDismissed){
+      state.installPlatform = "ios";
+      state.showInstallBanner = true;
+    }
+  })();
 
   var root = document.getElementById("root");
   var saveTimer = null;
@@ -741,7 +774,6 @@ tr.editing-row td input, tr.editing-row td select{
     +       '<nav class="nav-tabs">'
     +         navTab("admin",tr("navAdmin")) + navTab("evaluate",tr("navEvaluate")) + navTab("results",tr("navResults"))
     +       '</nav>'
-    +       (state.canInstall ? '<button class="lang-toggle" id="installAppBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>'+tr("installApp")+'</button>' : '')
     +       '<button class="lang-toggle" id="langToggleBtn" title="Switch language / تبديل اللغة">'
     +         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg>'
     +         (state.lang === "ar" ? "EN" : "AR")
@@ -750,12 +782,30 @@ tr.editing-row td input, tr.editing-row td select{
     +   '</header>'
     +   '<main><div class="container">' + body + '</div></main>'
     +   '<div class="footer-banner-wrap"><img src="'+BANNER_SRC+'" alt="Nama Water Services"></div>'
+    +   renderInstallBanner()
     +   '<div id="toast" class="toast"></div>'
     + '</div>';
   }
   function navTab(screen,label){
     var active = state.screen===screen ? " active":"";
     return '<button class="nav-tab'+active+'" data-nav="'+screen+'">'+label+'</button>';
+  }
+
+  function renderInstallBanner(){
+    if(!state.showInstallBanner) return "";
+    var isIOS = state.installPlatform === "ios";
+    return ''
+    + '<div class="install-banner">'
+    +   '<div class="install-banner-icon">📲</div>'
+    +   '<div class="install-banner-text">'
+    +     '<strong>'+tr("installBannerTitle")+'</strong>'
+    +     '<span>'+(isIOS ? tr("installBannerIOS") : tr("installBannerBody"))+'</span>'
+    +   '</div>'
+    +   '<div class="install-banner-actions">'
+    +     (!isIOS ? '<button class="btn btn-gold btn-sm" id="installBannerBtn">'+tr("installNow")+'</button>' : '')
+    +     '<button class="icon-btn" id="installBannerClose" title="'+tr("cancel")+'">✕</button>'
+    +   '</div>'
+    + '</div>';
   }
 
   function renderHome(){
@@ -1073,16 +1123,26 @@ tr.editing-row td input, tr.editing-row td select{
         render();
       });
     }
-    var installBtn = document.getElementById("installAppBtn");
-    if(installBtn){
-      installBtn.addEventListener("click", function(){
+    // Install banner
+    var installBannerBtn = document.getElementById("installBannerBtn");
+    if(installBannerBtn){
+      installBannerBtn.addEventListener("click", function(){
         if(!deferredInstallPrompt) return;
         deferredInstallPrompt.prompt();
         deferredInstallPrompt.userChoice.then(function(){
           deferredInstallPrompt = null;
           state.canInstall = false;
+          state.showInstallBanner = false;
           render();
         });
+      });
+    }
+    var installBannerClose = document.getElementById("installBannerClose");
+    if(installBannerClose){
+      installBannerClose.addEventListener("click", function(){
+        state.showInstallBanner = false;
+        try{ sessionStorage.setItem("ahsant_install_dismissed","1"); }catch(e){}
+        render();
       });
     }
 
@@ -1375,11 +1435,16 @@ tr.editing-row td input, tr.editing-row td select{
     e.preventDefault();
     deferredInstallPrompt = e;
     state.canInstall = true;
+    if(!installDismissed){
+      state.installPlatform = "android";
+      state.showInstallBanner = true;
+    }
     render();
   });
   window.addEventListener("appinstalled", function(){
     deferredInstallPrompt = null;
     state.canInstall = false;
+    state.showInstallBanner = false;
     render();
   });
   if("serviceWorker" in navigator){
