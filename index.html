@@ -199,6 +199,37 @@ tr.editing-row td input, tr.editing-row td select{
   padding:22px 14px; text-align:center; transition:all .18s ease;
 }
 .evaluator-card:hover{border-color:var(--gold); background:var(--surface-2); transform:translateY(-2px);}
+
+/* ---------- PIN modal ---------- */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(6,15,15,0.72); backdrop-filter:blur(3px);
+  display:flex; align-items:center; justify-content:center; z-index:80; padding:20px;
+}
+.modal-box{
+  background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--radius);
+  padding:30px 26px; width:100%; max-width:320px; text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+.modal-box h3{font-family:var(--font-display); font-size:17px; font-weight:700; margin-bottom:4px;}
+.modal-box p{font-size:12.5px; color:var(--text-dim); margin-bottom:18px;}
+.pin-input{
+  width:100%; text-align:center; letter-spacing:8px; font-size:22px; padding:12px;
+  border-radius:9px; background:var(--bg-2); border:1px solid var(--border-strong); color:var(--text);
+  font-family:var(--font-display); font-weight:700;
+}
+.pin-input:focus{border-color:var(--gold);}
+.pin-error{color:#E4938A; font-size:12px; margin-top:10px;}
+.modal-actions{display:flex; gap:10px; margin-top:18px;}
+.modal-actions .btn{flex:1; justify-content:center;}
+
+/* ---------- Admin login ---------- */
+.login-wrap{max-width:360px; margin:64px auto; text-align:center;}
+.login-wrap .brand-mark{width:48px; height:48px; font-size:20px; margin:0 auto 18px;}
+.login-wrap h2{font-family:var(--font-display); font-size:21px; font-weight:800; margin-bottom:6px;}
+.login-wrap p{color:var(--text-dim); font-size:13px; margin-bottom:26px;}
+.login-form{text-align:right;}
+.login-form .field{margin-bottom:14px;}
+.login-error{color:#E4938A; font-size:12.5px; margin-bottom:12px; text-align:center;}
 .eval-avatar{
   width:52px; height:52px; border-radius:50%; margin:0 auto 12px; display:flex; align-items:center; justify-content:center;
   background:linear-gradient(160deg, var(--surface-3), var(--bg-2)); border:1px solid var(--border-strong);
@@ -338,11 +369,19 @@ tr.editing-row td input, tr.editing-row td select{
     {key:"evidence", name:"جودة الأدلة", en:"Evidence Quality", weight:0.10}
   ];
   var DEFAULT_EVALUATORS = [
-    {id:"e0", name:"Saif"}, {id:"e1", name:"Said"}, {id:"e2", name:"Suhaila"},
-    {id:"e3", name:"Bader"}, {id:"e4", name:"Buthaina"}, {id:"e5", name:"Ahlam"},
-    {id:"e6", name:"مقيّم 7"}, {id:"e7", name:"مقيّم 8"}
+    {id:"e0", name:"Saif", pin:"1001"}, {id:"e1", name:"Said", pin:"1002"}, {id:"e2", name:"Suhaila", pin:"1003"},
+    {id:"e3", name:"Bader", pin:"1004"}, {id:"e4", name:"Buthaina", pin:"1005"}, {id:"e5", name:"Ahlam", pin:"1006"},
+    {id:"e6", name:"مقيّم 7", pin:"1007"}, {id:"e7", name:"مقيّم 8", pin:"1008"}
   ];
   var SCALE_MAX = 5;
+
+  /* ============================================================
+     بيانات دخول لوحة الإدارة — غيّرها لأي قيمة تناسبك.
+     ملاحظة: هذا تحقق بسيط من جهة المتصفح، مناسب لأداة داخلية،
+     وليس حماية بمستوى بنكي (أي شخص يفتح كود الصفحة يقدر يشوفه).
+     ============================================================ */
+  var ADMIN_USERNAME = "admin";
+  var ADMIN_PASSWORD = "Ahsant@2026";
 
   /* ============ State ============ */
   var state = {
@@ -350,16 +389,21 @@ tr.editing-row td input, tr.editing-row td select{
     loading: true,
     error: null,
     nominees: [],             // {id,name,staffId,division,category}
-    evaluators: [],           // {id,name}
+    evaluators: [],           // {id,name,pin}
     scores: {},                // evaluatorId -> { nomineeId -> {relevance..evidence} }
-    currentEvaluator: null,    // evaluator id while in evaluate screen
+    currentEvaluator: null,    // evaluator id while in evaluate screen (after PIN verified)
+    pendingEvaluatorId: null,  // evaluator id awaiting PIN entry
+    pinError: "",
     openNominee: null,
     saveStatus: "",           // '' | 'saving' | 'saved'
     nomineeCounter: 1,
     evaluatorCounter: DEFAULT_EVALUATORS.length,
     editingNomineeId: null,
-    editingEvaluatorId: null
+    editingEvaluatorId: null,
+    adminAuthed: false,
+    adminError: ""
   };
+  try{ state.adminAuthed = sessionStorage.getItem("ahsant_admin_authed") === "1"; }catch(e){}
 
   var root = document.getElementById("root");
   var saveTimer = null;
@@ -580,6 +624,20 @@ tr.editing-row td input, tr.editing-row td select{
 
   /* ---------- Admin ---------- */
   function renderAdmin(){
+    if(!state.adminAuthed){
+      return ''
+      + '<div class="login-wrap">'
+      +   '<div class="brand-mark">أح</div>'
+      +   '<h2>دخول لوحة الإدارة</h2>'
+      +   '<p>هذا القسم مخصص لمسؤول برنامج التميّز فقط.</p>'
+      +   (state.adminError ? '<div class="login-error">'+escapeHtml(state.adminError)+'</div>' : '')
+      +   '<div class="login-form">'
+      +     field('اسم المستخدم','text','adminUsername','')
+      +     field('الرمز السري','password','adminPassword','')
+      +     '<button class="btn btn-gold" id="adminLoginBtn" style="width:100%; justify-content:center; margin-top:6px;">دخول</button>'
+      +   '</div>'
+      + '</div>';
+    }
     var rows = state.nominees.map(function(n,idx){
       if(state.editingNomineeId === n.id){
         return '<tr class="editing-row">'
@@ -612,6 +670,7 @@ tr.editing-row td input, tr.editing-row td select{
         return '<tr class="editing-row">'
           + '<td>'+(idx+1)+'</td>'
           + '<td><input type="text" id="editEvaluatorName" value="'+escapeHtml(e.name)+'"></td>'
+          + '<td><input type="text" id="editEvaluatorPin" value="'+escapeHtml(e.pin||"")+'" maxlength="6" inputmode="numeric"></td>'
           + '<td style="white-space:nowrap;">'
           +   '<button class="icon-btn" data-save-evaluator-edit="'+e.id+'" title="حفظ">✓</button>'
           +   '<button class="icon-btn" data-cancel-evaluator-edit="1" title="إلغاء">✕</button>'
@@ -621,6 +680,7 @@ tr.editing-row td input, tr.editing-row td select{
       return '<tr>'
         + '<td>'+(idx+1)+'</td>'
         + '<td>'+escapeHtml(e.name)+'</td>'
+        + '<td><span class="pill">'+escapeHtml(e.pin||'—')+'</span></td>'
         + '<td style="white-space:nowrap;">'
         +   '<button class="icon-btn" data-edit-evaluator="'+e.id+'" title="تعديل">✎</button>'
         +   '<button class="icon-btn danger" data-del-evaluator="'+e.id+'" title="حذف">✕</button>'
@@ -630,7 +690,10 @@ tr.editing-row td input, tr.editing-row td select{
 
     return ''
     + '<div class="section-head"><div><h2>لوحة الإدارة</h2><p>إدارة قائمة المرشحين ولجنة المقيّمين — التغييرات تُحفظ فوراً ويراها الجميع.</p></div>'
+    +   '<div style="display:flex; gap:8px;">'
+    +   '<button class="btn btn-ghost btn-sm" id="adminLogoutBtn">تسجيل خروج</button>'
     +   '<button class="btn btn-danger btn-sm" id="resetAllBtn">إعادة تعيين كل البيانات</button>'
+    +   '</div>'
     + '</div>'
 
     + '<div class="panel">'
@@ -653,16 +716,18 @@ tr.editing-row td input, tr.editing-row td select{
 
     + '<div class="panel">'
     +   '<div class="section-head" style="margin-bottom:14px;"><h2 style="font-size:16px;">إضافة مقيّم جديد</h2></div>'
-    +   '<div class="form-grid" style="grid-template-columns:1fr auto;">'
+    +   '<div class="form-grid" style="grid-template-columns:1fr 1fr auto;">'
     +     field('اسم المقيّم','text','evaluatorName','')
+    +     field('الرمز السري (أرقام)','text','evaluatorPin','')
     +     '<button class="btn btn-gold" id="addEvaluatorBtn">إضافة</button>'
     +   '</div>'
     + '</div>'
 
     + '<div class="panel">'
     +   '<h2 style="font-size:16px; margin-bottom:4px;">لجنة المقيّمين ('+state.evaluators.length+')</h2>'
+    +   '<p style="font-size:12.5px;color:var(--text-dim); margin-top:4px;">شارك كل مقيّم برمزه السري لدخول شاشة التقييم.</p>'
     +   (state.evaluators.length ? (
-    '<div class="table-wrap"><table><thead><tr><th>#</th><th>الاسم</th><th></th></tr></thead><tbody>'+evalRows+'</tbody></table></div>'
+    '<div class="table-wrap"><table><thead><tr><th>#</th><th>الاسم</th><th>الرمز السري</th><th></th></tr></thead><tbody>'+evalRows+'</tbody></table></div>'
       ) : '<div class="empty-state"><div class="ic">🧑‍⚖️</div><h4>لا يوجد مقيّمون بعد</h4><p>أضف أول عضو في لجنة التقييم باستخدام النموذج أعلاه.</p></div>')
     + '</div>';
   }
@@ -691,9 +756,30 @@ tr.editing-row td input, tr.editing-row td select{
           + '<div class="prog">'+doneCount+' / '+state.nominees.length+' مكتمل</div>'
           + '</div>';
       }).join("");
+      var modal = "";
+      if(state.pendingEvaluatorId){
+        var pendEv = state.evaluators.find(function(e){return e.id===state.pendingEvaluatorId;});
+        if(pendEv){
+          modal = ''
+          + '<div class="modal-overlay" data-close-pin-modal="1">'
+          +   '<div class="modal-box" data-stop-prop="1">'
+          +     '<div class="eval-avatar" style="margin:0 auto 14px;">'+initials(pendEv.name)+'</div>'
+          +     '<h3>'+escapeHtml(pendEv.name)+'</h3>'
+          +     '<p>أدخل الرمز السري الخاص بك للمتابعة</p>'
+          +     '<input type="password" inputmode="numeric" id="pinInput" class="pin-input" placeholder="••••" autofocus>'
+          +     (state.pinError ? '<div class="pin-error">'+escapeHtml(state.pinError)+'</div>' : '')
+          +     '<div class="modal-actions">'
+          +       '<button class="btn btn-ghost btn-sm" data-close-pin-modal="1">إلغاء</button>'
+          +       '<button class="btn btn-gold btn-sm" id="pinSubmitBtn">دخول</button>'
+          +     '</div>'
+          +   '</div>'
+          + '</div>';
+        }
+      }
       return ''
-      + '<div class="section-head"><div><h2>من أنت؟</h2><p>اختر اسمك للبدء بتقييم المرشحين.</p></div></div>'
-      + '<div class="evaluator-grid">'+cards+'</div>';
+      + '<div class="section-head"><div><h2>من أنت؟</h2><p>اختر اسمك وأدخل رمزك السري للبدء بتقييم المرشحين.</p></div></div>'
+      + '<div class="evaluator-grid">'+cards+'</div>'
+      + modal;
     }
 
     var ev = state.evaluators.find(function(e){return e.id===state.currentEvaluator;});
@@ -811,7 +897,11 @@ tr.editing-row td input, tr.editing-row td select{
     root.querySelectorAll("[data-nav]").forEach(function(el){
       el.addEventListener("click", function(){
         state.screen = el.getAttribute("data-nav");
-        if(state.screen === "evaluate"){ /* keep currentEvaluator if set */ }
+        if(state.screen === "evaluate"){
+          state.currentEvaluator = null;
+          state.pendingEvaluatorId = null;
+          state.pinError = "";
+        }
         render();
       });
     });
@@ -884,10 +974,12 @@ tr.editing-row td input, tr.editing-row td select{
     if(addEvalBtn){
       addEvalBtn.addEventListener("click", async function(){
         var name = document.getElementById("evaluatorName").value.trim();
+        var pin = document.getElementById("evaluatorPin").value.trim();
         if(!name){ showToast("الرجاء إدخال اسم المقيّم"); return; }
+        if(!pin){ showToast("الرجاء إدخال رمز سري للمقيّم"); return; }
         var id = "ev" + state.evaluatorCounter;
         state.evaluatorCounter++;
-        state.evaluators.push({id:id, name:name});
+        state.evaluators.push({id:id, name:name, pin:pin});
         state.scores[id] = {};
         await setDoc("evaluators", state.evaluators);
         await updateMeta();
@@ -930,14 +1022,50 @@ tr.editing-row td input, tr.editing-row td select{
         var ev = state.evaluators.find(function(x){return x.id===id;});
         if(!ev) return;
         var name = document.getElementById("editEvaluatorName").value.trim();
+        var pin = document.getElementById("editEvaluatorPin").value.trim();
         if(!name){ showToast("الرجاء إدخال اسم المقيّم"); return; }
+        if(!pin){ showToast("الرجاء إدخال رمز سري للمقيّم"); return; }
         ev.name = name;
+        ev.pin = pin;
         state.editingEvaluatorId = null;
         await setDoc("evaluators", state.evaluators);
         showToast("تم حفظ التعديل");
         render();
       });
     });
+
+    // Admin: login
+    var adminLoginBtn = document.getElementById("adminLoginBtn");
+    if(adminLoginBtn){
+      adminLoginBtn.addEventListener("click", function(){
+        var u = document.getElementById("adminUsername").value.trim();
+        var p = document.getElementById("adminPassword").value;
+        if(u === ADMIN_USERNAME && p === ADMIN_PASSWORD){
+          state.adminAuthed = true;
+          state.adminError = "";
+          try{ sessionStorage.setItem("ahsant_admin_authed","1"); }catch(e){}
+        } else {
+          state.adminError = "اسم المستخدم أو الرمز السري غير صحيح";
+        }
+        render();
+      });
+      var pwField = document.getElementById("adminPassword");
+      if(pwField){
+        pwField.addEventListener("keydown", function(e){
+          if(e.key === "Enter") adminLoginBtn.click();
+        });
+      }
+    }
+
+    // Admin: logout
+    var adminLogoutBtn = document.getElementById("adminLogoutBtn");
+    if(adminLogoutBtn){
+      adminLogoutBtn.addEventListener("click", function(){
+        state.adminAuthed = false;
+        try{ sessionStorage.removeItem("ahsant_admin_authed"); }catch(e){}
+        render();
+      });
+    }
 
     // Admin: reset all
     var resetBtn = document.getElementById("resetAllBtn");
@@ -959,14 +1087,51 @@ tr.editing-row td input, tr.editing-row td select{
       });
     }
 
-    // Evaluate: pick evaluator
+    // Evaluate: pick evaluator (opens PIN modal)
     root.querySelectorAll("[data-pick-eval]").forEach(function(el){
       el.addEventListener("click", function(){
-        state.currentEvaluator = el.getAttribute("data-pick-eval");
-        state.openNominee = null;
+        state.pendingEvaluatorId = el.getAttribute("data-pick-eval");
+        state.pinError = "";
         render();
       });
     });
+
+    // Evaluate: PIN modal
+    var pinInput = document.getElementById("pinInput");
+    var pinSubmitBtn = document.getElementById("pinSubmitBtn");
+    function trySubmitPin(){
+      var ev = state.evaluators.find(function(e){return e.id===state.pendingEvaluatorId;});
+      if(!ev) return;
+      var val = document.getElementById("pinInput").value.trim();
+      if(val && ev.pin && val === ev.pin){
+        state.currentEvaluator = ev.id;
+        state.pendingEvaluatorId = null;
+        state.pinError = "";
+        state.openNominee = null;
+      } else {
+        state.pinError = "الرمز السري غير صحيح، حاول مجدداً";
+      }
+      render();
+    }
+    if(pinSubmitBtn){ pinSubmitBtn.addEventListener("click", trySubmitPin); }
+    if(pinInput){
+      pinInput.focus();
+      pinInput.addEventListener("keydown", function(e){
+        if(e.key === "Enter") trySubmitPin();
+      });
+    }
+    root.querySelectorAll("[data-close-pin-modal]").forEach(function(el){
+      el.addEventListener("click", function(){
+        state.pendingEvaluatorId = null;
+        state.pinError = "";
+        render();
+      });
+    });
+    var modalBoxEl = document.querySelector("[data-stop-prop]");
+    if(modalBoxEl){
+      modalBoxEl.addEventListener("click", function(e){ e.stopPropagation(); });
+    }
+
     var backEval = document.querySelector("[data-back-eval]");
     if(backEval){
       backEval.addEventListener("click", function(){
